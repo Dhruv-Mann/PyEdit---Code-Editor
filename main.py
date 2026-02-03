@@ -1,6 +1,8 @@
 import customtkinter as ctk
 from text_engine import TextEngine  # <--- IMPORT THE BRAIN
 from tkinter import filedialog
+import subprocess
+import sys
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("dark-blue")
@@ -11,21 +13,25 @@ class CodeEditorApp(ctk.CTk):
         super().__init__()
 
         # 1. Setup Window
-        self.title("PyEdit - Python Code Editor")
-        self.geometry("900x600") # Made it slightly wider for the sidebar
+        self.title("Squama - Python Code Editor")
+        self.geometry("900x700") # Taller window for the console
 
-        # Layout: 2 Columns. 
-        # Column 0 = Sidebar (Fixed width)
-        # Column 1 = Editor (Expandable)
-        self.grid_columnconfigure(0, weight=0) # Sidebar doesn't expand
-        self.grid_columnconfigure(1, weight=1) # Editor expands
-        self.grid_rowconfigure(0, weight=1)
+        # Grid Layout: 
+        # Column 0: Sidebar (Fixed)
+        # Column 1: Editor/Console (Expandable)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=1)
+        
+        # Row 0: Editor (Takes 80% space)
+        # Row 1: Console (Takes 20% space)
+        self.grid_rowconfigure(0, weight=4) 
+        self.grid_rowconfigure(1, weight=1)
 
         self.engine = TextEngine()
 
-        # 2. Create Sidebar Frame
+        # 2. Sidebar Frame
         self.sidebar = ctk.CTkFrame(self, width=150, corner_radius=0)
-        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew") # Spans both rows
         
         # 3. Sidebar Buttons
         self.btn_open = ctk.CTkButton(self.sidebar, text="Open File", command=self.open_file)
@@ -33,8 +39,12 @@ class CodeEditorApp(ctk.CTk):
 
         self.btn_save = ctk.CTkButton(self.sidebar, text="Save File", command=self.save_file)
         self.btn_save.pack(pady=10, padx=10)
+        
+        # --- NEW RUN BUTTON ---
+        self.btn_run = ctk.CTkButton(self.sidebar, text="▶ RUN", fg_color="green", hover_color="darkgreen", command=self.run_code)
+        self.btn_run.pack(pady=20, padx=10)
 
-        # 4. Create Editor Display
+        # 4. Editor Display (Row 0)
         self.display_label = ctk.CTkLabel(
             self, 
             text="Start typing...", 
@@ -46,7 +56,19 @@ class CodeEditorApp(ctk.CTk):
         )
         self.display_label.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        # 5. Bind Keys
+        # 5. Console Display (Row 1) --- NEW ---
+        self.console_label = ctk.CTkLabel(
+            self,
+            text="Console Output...",
+            font=("Consolas", 12),
+            anchor="nw",
+            justify="left",
+            fg_color="#000000", # Pure black for terminal feel
+            text_color="#00FF00" # Matrix Green text
+        )
+        self.console_label.grid(row=1, column=1, padx=10, pady=(0, 10), sticky="nsew")
+
+        # 6. Bind Keys
         self.bind("<Key>", self.handle_keypress)
 
     def handle_keypress(self, event):
@@ -126,6 +148,47 @@ class CodeEditorApp(ctk.CTk):
             f.write(content)
         
         self.title(f"PyEdit - {filepath}")
+
+    def run_code(self):
+        """
+        Saves current code to a temp file and runs it.
+        """
+        # 1. Get code (remove the cursor pipe!)
+        code = self.engine.get_text().replace("|", "")
+        
+        # 2. Save to a temp file (hidden file)
+        temp_filename = ".temp_run.py"
+        with open(temp_filename, "w") as f:
+            f.write(code)
+            
+        # 3. Update Console to show we are working...
+        self.console_label.configure(text="Running...", text_color="yellow")
+        self.update() # Force UI update immediately
+
+        try:
+            # 4. Run the subprocess
+            # 'python' might need to be 'python3' depending on your OS path
+            result = subprocess.run(
+                [sys.executable, temp_filename], # sys.executable finds YOUR current python
+                capture_output=True,
+                text=True,
+                timeout=5 # Don't let infinite loops freeze the app!
+            )
+            
+            # 5. Show Output
+            if result.returncode == 0:
+                # Success: Show stdout
+                output = f"✅ SUCCESS:\n{result.stdout}"
+                self.console_label.configure(text=output, text_color="#00FF00")
+            else:
+                # Error: Show stderr
+                output = f"❌ ERROR:\n{result.stderr}"
+                self.console_label.configure(text=output, text_color="#FF5555")
+
+        except subprocess.TimeoutExpired:
+            self.console_label.configure(text="❌ ERROR: Code took too long (Infinite Loop?)", text_color="#FF5555")
+        except Exception as e:
+            self.console_label.configure(text=f"❌ SYSTEM ERROR: {str(e)}", text_color="#FF5555")
 
 
 if __name__ == "__main__":
