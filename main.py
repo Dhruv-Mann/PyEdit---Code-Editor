@@ -49,8 +49,10 @@ class CodeEditorApp(ctk.CTk):
 
         # B. Handle Backspace (Tkinter sends \x08 for backspace)
         # We haven't implemented delete yet, so we ignore it or print a warning
+        # B. Handle Backspace
         if event.keysym == "BackSpace":
-            print("Backspace pressed (Not implemented yet)")
+            self.engine.delete_char()  # <--- CALL THE NEW FUNCTION
+            self.redraw()              # <--- Update screen immediately
             return
             
         # C. Handle Return (Enter)
