@@ -78,6 +78,19 @@ class CodeEditorApp(ctk.CTk):
         # DEBUG: See what is happening
         print(f"Key sym: {event.keysym}, Char: '{event.char}'")
 
+        # 0. Handle Shortcuts (Ctrl+Z / Ctrl+Y)
+        # state=4 usually means Control is held down on Windows/Linux
+        # On Mac it might be different, but let's try standard first.
+        if (event.state & 4) or (event.state & 12): # Checks for Ctrl key
+            if event.keysym.lower() == "z":
+                self.engine.undo()
+                self.redraw()
+                return
+            if event.keysym.lower() == "y":
+                self.engine.redo()
+                self.redraw()
+                return
+
         # 1. Handle Backspace
         if event.keysym == "BackSpace":
             self.engine.delete_char()
