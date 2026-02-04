@@ -54,26 +54,32 @@ pip install customtkinter
 
 # 3. Run the app
 python main.py
-🏗️ Architecture
-Squama is not just a wrapper around a text box. It is a full engineering project.
+## 🏗️ Architecture
 
-The Gap Buffer
-Instead of moving all characters in memory every time you type (which is O(N)), Squama maintains a "Gap" (a list of None values) at the cursor position.
-[H, E, L, L, O, _, _, _, _, _, W, O, R, L, D]
-                 ^ Gap starts here
+Squama is not just a wrapper around a text box; it is a full engineering project designed for performance.
 
-When you type, we fill the gap. When the gap is full, we double the buffer size (Dynamic Array resizing).
+### 1. The Gap Buffer
+Instead of moving all characters in memory every time you type (which is $O(N)$), Squama maintains a **"Gap"** (a list of `None` values) at the cursor position.
 
-The Undo Stack
-Every major action pushes a state snapshot to the undo_stack.
+`[H, E, L, L, O, _, _, _, _, _, W, O, R, L, D]`
+_— Gap starts at the cursor position —_
 
-Undo: Pop from undo_stack -> Push to redo_stack.
+* **Efficiency:** When you type, we simply fill the gap.
+* **Resizing:** When the gap is full, we double the buffer size using **Dynamic Array resizing**.
 
-Redo: Pop from redo_stack -> Push to undo_stack.
+### 2. The Undo Stack
+Every major action pushes a state snapshot to the `undo_stack`.
 
-New Action: Clears the redo_stack (Branching timeline logic).
+* **Undo:** Pop from `undo_stack` $\rightarrow$ Push to `redo_stack`.
+* **Redo:** Pop from `redo_stack` $\rightarrow$ Push to `undo_stack`.
+* **New Action:** Clears the `redo_stack` (Standard Branching Timeline Logic).
 
-📜 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
 
-Built with ❤️ and Python by Dhruv.
+## 📜 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ and Python by Dhruv.**
