@@ -1,8 +1,10 @@
 import customtkinter as ctk
-from text_engine import TextEngine  # <--- IMPORT THE BRAIN
 from tkinter import filedialog
-import subprocess
 import sys
+import io
+import contextlib
+import traceback
+from text_engine import TextEngine
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("dark-blue")
@@ -217,44 +219,38 @@ class CodeEditorApp(ctk.CTk):
 
     def run_code(self):
         """
-        Saves current code to a temp file and runs it.
+        Runs the code internally using exec() and captures stdout.
         """
-        # 1. Get code (remove the cursor pipe!)
+        # 1. Get code
         code = self.engine.get_text().replace("|", "")
         
-        # 2. Save to a temp file (hidden file)
-        temp_filename = ".temp_run.py"
-        with open(temp_filename, "w") as f:
-            f.write(code)
-            
-        # 3. Update Console to show we are working...
+        # 2. Update Console
         self.console_label.configure(text="Running...", text_color="yellow")
-        self.update() # Force UI update immediately
+        self.update()
 
+        # 3. Create a memory buffer to catch 'print' statements
+        output_buffer = io.StringIO()
+        
         try:
-            # 4. Run the subprocess
-            # 'python' might need to be 'python3' depending on your OS path
-            result = subprocess.run(
-                [sys.executable, temp_filename], # sys.executable finds YOUR current python
-                capture_output=True,
-                text=True,
-                timeout=5 # Don't let infinite loops freeze the app!
-            )
+            # 4. Run the code while redirecting stdout to our buffer
+            # We pass a fresh dictionary {} as globals to keep runs isolated
+            with contextlib.redirect_stdout(output_buffer):
+                exec(code, {'__name__': '__main__'})
             
-            # 5. Show Output
-            if result.returncode == 0:
-                # Success: Show stdout
-                output = f"✅ SUCCESS:\n{result.stdout}"
-                self.console_label.configure(text=output, text_color="#00FF00")
-            else:
-                # Error: Show stderr
-                output = f"❌ ERROR:\n{result.stderr}"
-                self.console_label.configure(text=output, text_color="#FF5555")
+            # 5. Success! Get the text from the buffer
+            output = output_buffer.getvalue()
+            if not output:
+                output = "[Program finished with no output]"
+                
+            self.console_label.configure(text=f"✅ SUCCESS:\n{output}", text_color="#00FF00")
 
-        except subprocess.TimeoutExpired:
-            self.console_label.configure(text="❌ ERROR: Code took too long (Infinite Loop?)", text_color="#FF5555")
-        except Exception as e:
-            self.console_label.configure(text=f"❌ SYSTEM ERROR: {str(e)}", text_color="#FF5555")
+        except Exception:
+            # 6. Error! Get the traceback (Error details)
+            error_details = traceback.format_exc()
+            self.console_label.configure(text=f"❌ ERROR:\n{error_details}", text_color="#FF5555")
+        
+        finally:
+            output_buffer.close()
 
     def highlight_syntax(self):
         """
